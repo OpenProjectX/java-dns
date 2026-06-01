@@ -33,12 +33,14 @@ java '-javaagent:core/build/libs/core-0.1.0-SNAPSHOT.jar=hosts=example.test/127.
 Agent options are separated by semicolons:
 
 - `hosts=host/address|address,other.host/address`: resolves specific hosts to IP literals.
+- `hostsFile=/path/to/hosts`: loads hosts-style mappings such as `127.0.0.1 google.com`.
 - `servers=127.0.0.1:5353,8.8.8.8`: queries custom DNS servers by UDP.
 - `timeoutMillis=2000`: per-query timeout.
 - `cacheTtlSeconds=30`: positive DNS cache TTL inside the agent.
 - `fallback=true`: if the custom resolver has no answer, continue with the JVM system resolver.
 
 DNS servers must be IP literals. IPv6 servers can be written as `[2001:4860:4860::8888]:53`.
+When both `hosts` and `hostsFile` define the same name, the file entry wins.
 
 ## Gradle Plugin
 
@@ -51,19 +53,26 @@ plugins {
 }
 
 javadns {
-    mainClass.set("com.example.Main")
     hosts.put("example.test", "127.0.0.42")
+    hostsFile.set(layout.projectDirectory.file("dns.hosts"))
     servers.add("127.0.0.1:5353")
     fallbackToSystem.set(true)
-    args.add("app-argument")
 }
 ```
 
-Run with the agent:
+The plugin automatically attaches the agent to Gradle `Test` and `JavaExec`
+tasks, including the `run` task from the `application` plugin:
 
 ```bash
-./gradlew javaDnsRun
+./gradlew test run
 ```
+
+Generic `Exec` tasks are not modified by default because many of them do not
+launch Java. To opt in, set `autoAttachExec.set(true)`; the plugin will append
+the agent through `JAVA_TOOL_OPTIONS`.
+
+`javaDnsRun` is also available. It uses `javadns.mainClass` when configured, or
+the `application` plugin's `mainClass` when present.
 
 Print the generated agent argument string:
 
@@ -82,6 +91,7 @@ Example configuration:
   <version>0.1.0-SNAPSHOT</version>
   <configuration>
     <mainClass>com.example.Main</mainClass>
+    <hostsFile>${project.basedir}/dns.hosts</hostsFile>
     <hosts>
       <example.test>127.0.0.42</example.test>
     </hosts>
@@ -117,7 +127,7 @@ Run the basic example from this checkout:
 
 ```bash
 cd examples/basic
-env GRADLE_USER_HOME=/data/.gradle ../../gradlew javaDnsRun --no-configuration-cache
+env GRADLE_USER_HOME=/data/.gradle ../../gradlew run --no-configuration-cache
 ```
 
 The example starts WireMock locally, maps `google.com` to `127.0.0.1`, sends an

@@ -2,6 +2,8 @@ package org.openprojectx.java.dns.core;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -67,7 +69,7 @@ public final class DnsRuntime {
         }
     }
 
-    public static String agentArgs(List<String> servers, Map<String, String> hosts, int timeoutMillis,
+    public static String agentArgs(List<String> servers, Map<String, String> hosts, String hostsFile, int timeoutMillis,
                                    int cacheTtlSeconds, boolean fallbackToSystem) {
         List<String> parts = new ArrayList<>();
         if (servers != null && !servers.isEmpty()) {
@@ -77,6 +79,9 @@ public final class DnsRuntime {
             List<String> entries = new ArrayList<>();
             hosts.forEach((host, value) -> entries.add(host + "/" + value.replace(',', '|')));
             parts.add("hosts=" + String.join(",", entries));
+        }
+        if (hostsFile != null && !hostsFile.isBlank()) {
+            parts.add("hostsFile=" + hostsFile);
         }
         parts.add("timeoutMillis=" + timeoutMillis);
         parts.add("cacheTtlSeconds=" + cacheTtlSeconds);
@@ -113,16 +118,19 @@ public final class DnsRuntime {
                     options.get("server"),
                     System.getProperty("javadns.servers"),
                     System.getProperty("javadns.server")));
-            Map<String, InetAddress[]> hosts = parseHosts(firstNonBlank(
+            Map<String, InetAddress[]> hosts = new LinkedHashMap<>(parseHosts(firstNonBlank(
                     options.get("hosts"),
-                    System.getProperty("javadns.hosts")));
+                    System.getProperty("javadns.hosts"))));
+            hosts.putAll(parseHostsFile(firstNonBlank(
+                    options.get("hostsFile"),
+                    System.getProperty("javadns.hostsFile"))));
             int timeoutMillis = parseInt(firstNonBlank(options.get("timeoutMillis"),
                     System.getProperty("javadns.timeoutMillis")), 2000);
             int cacheTtlSeconds = parseInt(firstNonBlank(options.get("cacheTtlSeconds"),
                     System.getProperty("javadns.cacheTtlSeconds")), 30);
             boolean fallback = Boolean.parseBoolean(firstNonBlank(options.get("fallback"),
                     System.getProperty("javadns.fallback"), "true"));
-            return new DnsConfig(servers, hosts, timeoutMillis, Math.max(0, cacheTtlSeconds) * 1000L, fallback);
+            return new DnsConfig(servers, Map.copyOf(hosts), timeoutMillis, Math.max(0, cacheTtlSeconds) * 1000L, fallback);
         }
 
         private static Map<String, String> parseOptions(String agentArgs) {
@@ -184,6 +192,53 @@ public final class DnsRuntime {
                 }
             }
             return Map.copyOf(hosts);
+        }
+
+        private static Map<String, InetAddress[]> parseHostsFile(String value) {
+            if (value == null || value.isBlank()) {
+                return Collections.emptyMap();
+            }
+
+            Path path = Path.of(value);
+            if (!Files.isRegularFile(path)) {
+                return Collections.emptyMap();
+            }
+
+            Map<String, List<InetAddress>> hosts = new LinkedHashMap<>();
+            try {
+                for (String line : Files.readAllLines(path)) {
+                    String cleaned = line.split("#", 2)[0].trim();
+                    if (cleaned.isBlank()) {
+                        continue;
+                    }
+
+                    String[] tokens = cleaned.split("\\s+");
+                    if (tokens.length < 2) {
+                        continue;
+                    }
+
+                    byte[] bytes = IpAddressParser.parse(tokens[0]);
+                    if (bytes == null) {
+                        continue;
+                    }
+
+                    for (int i = 1; i < tokens.length; i++) {
+                        String host = normalize(tokens[i]);
+                        try {
+                            hosts.computeIfAbsent(host, ignored -> new ArrayList<>())
+                                    .add(InetAddress.getByAddress(host, bytes));
+                        } catch (UnknownHostException ignored) {
+                            // Parsed literal sizes are already valid.
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+                return Collections.emptyMap();
+            }
+
+            Map<String, InetAddress[]> result = new LinkedHashMap<>();
+            hosts.forEach((host, addresses) -> result.put(host, addresses.toArray(InetAddress[]::new)));
+            return Map.copyOf(result);
         }
 
         private static String firstNonBlank(String... values) {

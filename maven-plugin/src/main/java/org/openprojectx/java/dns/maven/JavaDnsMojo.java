@@ -35,6 +35,9 @@ public class JavaDnsMojo extends AbstractMojo {
     @Parameter
     private Map<String, String> hosts = Collections.emptyMap();
 
+    @Parameter(property = "javadns.hostsFile")
+    private File hostsFile;
+
     @Parameter(property = "javadns.timeoutMillis", defaultValue = "2000")
     private int timeoutMillis;
 
@@ -79,7 +82,13 @@ public class JavaDnsMojo extends AbstractMojo {
     }
 
     private String agentArgs() {
-        return DnsRuntime.agentArgs(servers, hosts, timeoutMillis, cacheTtlSeconds, fallbackToSystem);
+        return DnsRuntime.agentArgs(
+                servers,
+                hosts,
+                hostsFile == null ? null : hostsFile.getAbsolutePath(),
+                timeoutMillis,
+                cacheTtlSeconds,
+                fallbackToSystem);
     }
 
     private String classpath() throws MojoExecutionException {

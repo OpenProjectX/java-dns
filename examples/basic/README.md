@@ -6,7 +6,14 @@ It starts WireMock on localhost, maps `google.com` to `127.0.0.1`, calls
 with the `google.com` host header.
 
 ```bash
-env GRADLE_USER_HOME=/data/.gradle ../../gradlew javaDnsRun --no-configuration-cache
+env GRADLE_USER_HOME=/data/.gradle ../../gradlew run --no-configuration-cache
+```
+
+The same DNS override is also exercised by JUnit through the auto-attached
+`test` task:
+
+```bash
+env GRADLE_USER_HOME=/data/.gradle ../../gradlew test --no-configuration-cache
 ```
 
 Expected output includes:
