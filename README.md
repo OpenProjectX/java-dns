@@ -47,7 +47,7 @@ Apply the plugin:
 ```kotlin
 plugins {
     java
-    id("org.openprojectx.java.dns") version "0.1.0-SNAPSHOT"
+    id("org.openprojectx.java.dns") version "0.1.0"
 }
 
 javadns {
