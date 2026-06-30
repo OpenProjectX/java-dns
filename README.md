@@ -2,11 +2,12 @@
 
 `java-dns` provides a Java 17 `-javaagent` that instruments JDK DNS resolution with Byte Buddy. It lets a launched JVM resolve selected hosts through configured host overrides or custom DNS servers without changing application code.
 
-The repository publishes three modules:
+The repository publishes four modules:
 
 - `core`: the Java agent and DNS runtime.
 - `gradle-plugin`: Gradle plugin for launching a Java application with the agent.
 - `maven-plugin`: Maven plugin for launching a Java application with the agent.
+- `junit5`: JUnit 5 integration that attaches the agent at test runtime.
 
 ## Requirements
 
@@ -114,6 +115,53 @@ You can also pass simple properties:
 ```bash
 mvn javadns:run -Djavadns.mainClass=com.example.Main -Djavadns.timeoutMillis=500
 ```
+
+## JUnit 5 Runtime Attach
+
+Add the JUnit 5 module to the test runtime classpath to attach the agent
+automatically when the JUnit Platform launcher session opens:
+
+```kotlin
+dependencies {
+    testRuntimeOnly("org.openprojectx.java.dns:junit5:0.1.2-SNAPSHOT")
+}
+```
+
+Configure it with system properties:
+
+```bash
+./gradlew test \
+  -Djavadns.hosts=google.com/127.0.0.1 \
+  -Djavadns.hostsFile=/path/to/dns.hosts \
+  -Djavadns.fallback=false
+```
+
+Supported properties:
+
+- `javadns.hosts`: comma-separated `host/address` entries.
+- `javadns.hostsFile`: hosts-style file path, for example `127.0.0.1 google.com`.
+- `javadns.servers`: comma-separated DNS servers.
+- `javadns.timeoutMillis`: per-query timeout.
+- `javadns.cacheTtlSeconds`: positive DNS cache TTL.
+- `javadns.fallback`: whether to continue with the JVM system resolver.
+- `javadns.junit.enabled`: set to `false` to disable automatic JUnit attach.
+
+For explicit per-suite attachment, add the module as `testImplementation` and
+use the extension:
+
+```java
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.openprojectx.java.dns.junit5.JavaDnsExtension;
+
+@ExtendWith(JavaDnsExtension.class)
+class MyTest {
+}
+```
+
+The JUnit integration uses Byte Buddy runtime self-attach. It instruments before
+test discovery and execution when loaded through the JUnit Platform service
+loader, but this is still later than JVM startup. Use `-javaagent` when DNS
+instrumentation must be active before any test JVM code runs.
 
 ## Local Development
 

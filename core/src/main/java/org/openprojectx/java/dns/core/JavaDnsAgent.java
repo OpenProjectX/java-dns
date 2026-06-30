@@ -15,9 +15,12 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipEntry;
 
 public final class JavaDnsAgent {
+    private static final AtomicBoolean INSTALLED = new AtomicBoolean(false);
+
     private JavaDnsAgent() {
     }
 
@@ -29,10 +32,18 @@ public final class JavaDnsAgent {
         install(agentArgs, instrumentation);
     }
 
-    private static void install(String agentArgs, Instrumentation instrumentation) {
-        appendHelpersToBootstrap(instrumentation);
-        configureBootstrapRuntime(agentArgs);
+    private static synchronized void install(String agentArgs, Instrumentation instrumentation) {
+        if (INSTALLED.compareAndSet(false, true)) {
+            appendHelpersToBootstrap(instrumentation);
+            configureBootstrapRuntime(agentArgs);
+            installTransformers(instrumentation);
+            return;
+        }
 
+        configureBootstrapRuntime(agentArgs);
+    }
+
+    private static void installTransformers(Instrumentation instrumentation) {
         new AgentBuilder.Default()
                 .ignore(ElementMatchers.none())
                 .with(new ErrorLoggingListener())

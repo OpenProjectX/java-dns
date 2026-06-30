@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation(libs.byteBuddy)
+    implementation(libs.byteBuddyAgent)
     testImplementation(libs.junitJupiter)
     testRuntimeOnly(libs.junitPlatformLauncher)
 }

@@ -8,16 +8,17 @@ Use JDK 17 or newer. This repository is built with the checked-in Gradle wrapper
 env GRADLE_USER_HOME=/data/.gradle ./gradlew test
 ```
 
-The build has three main modules:
+The build has four main modules:
 
 - `core`: Java agent, DNS runtime, and agent tests.
 - `gradle-plugin`: Gradle DSL and TestKit tests.
 - `maven-plugin`: Maven `javadns:run` goal.
+- `junit5`: JUnit Platform launcher listener and extension for runtime attach.
 
 ## Workflow
 
 1. Keep changes scoped to the module you are working on.
-2. Add or update tests when changing resolver behavior, agent argument formatting, or build-tool plugin behavior.
+2. Add or update tests when changing resolver behavior, agent argument formatting, runtime attach behavior, or build-tool plugin behavior.
 3. Run `env GRADLE_USER_HOME=/data/.gradle ./gradlew test` before submitting changes.
 4. For agent changes, also smoke test a real `-javaagent` launch with a host override.
 
