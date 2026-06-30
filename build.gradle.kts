@@ -83,6 +83,13 @@ subprojects {
         }
 
         extensions.configure<PublishingExtension>("publishing") {
+            repositories {
+                maven {
+                    name = "imageMaven"
+                    url = rootProject.layout.buildDirectory.dir("image/m2/repository").get().asFile.toURI()
+                }
+            }
+
             publications {
                 if (project.name != "plugin" && findByName("mavenJava") == null) {
                     create<MavenPublication>("mavenJava") {
@@ -148,6 +155,12 @@ subprojects {
     tasks.withType<PublishToMavenRepository>().configureEach {
         dependsOn(tasks.withType<Sign>())
     }
+}
+
+tasks.register("publishMavenArtifactsForImage") {
+    group = "publishing"
+    description = "Publishes all Maven publications into build/image/m2/repository for the Docker image."
+    dependsOn(subprojects.map { "${it.path}:publishAllPublicationsToImageMavenRepository" })
 }
 
 nexusPublishing {

@@ -1,0 +1,8 @@
+**
+!build/
+!build/image/
+!build/image/m2/
+!build/image/m2/repository/
+!build/image/m2/repository/**
+!docker/
+!docker/maven-artifacts.Dockerfile
