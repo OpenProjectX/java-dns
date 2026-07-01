@@ -81,7 +81,10 @@ jobs:
 
       - name: Read release version
         run: |
-          release_version="$(sed -n 's/^version=//p' gradle.properties)"
+          release_version="$(sed -n 's/^[[:space:]]*version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -n 1)"
+          if [ -z "$release_version" ]; then
+            release_version="${RELEASE_TAG#java-dns-}"
+          fi
           echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
 
       - name: Set image name
